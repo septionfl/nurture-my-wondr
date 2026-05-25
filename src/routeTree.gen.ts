@@ -9,38 +9,95 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppTransactionRouteImport } from './routes/_app/transaction'
+import { Route as AppInsightRouteImport } from './routes/_app/insight'
+import { Route as AppGrowthRouteImport } from './routes/_app/growth'
+import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppTransactionRoute = AppTransactionRouteImport.update({
+  id: '/transaction',
+  path: '/transaction',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInsightRoute = AppInsightRouteImport.update({
+  id: '/insight',
+  path: '/insight',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGrowthRoute = AppGrowthRouteImport.update({
+  id: '/growth',
+  path: '/growth',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/growth': typeof AppGrowthRoute
+  '/insight': typeof AppInsightRoute
+  '/transaction': typeof AppTransactionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/growth': typeof AppGrowthRoute
+  '/insight': typeof AppInsightRoute
+  '/transaction': typeof AppTransactionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/growth': typeof AppGrowthRoute
+  '/_app/insight': typeof AppInsightRoute
+  '/_app/transaction': typeof AppTransactionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/dashboard' | '/growth' | '/insight' | '/transaction'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/dashboard' | '/growth' | '/insight' | '/transaction'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/_app/dashboard'
+    | '/_app/growth'
+    | '/_app/insight'
+    | '/_app/transaction'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +105,56 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/transaction': {
+      id: '/_app/transaction'
+      path: '/transaction'
+      fullPath: '/transaction'
+      preLoaderRoute: typeof AppTransactionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/insight': {
+      id: '/_app/insight'
+      path: '/insight'
+      fullPath: '/insight'
+      preLoaderRoute: typeof AppInsightRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/growth': {
+      id: '/_app/growth'
+      path: '/growth'
+      fullPath: '/growth'
+      preLoaderRoute: typeof AppGrowthRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppGrowthRoute: typeof AppGrowthRoute
+  AppInsightRoute: typeof AppInsightRoute
+  AppTransactionRoute: typeof AppTransactionRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppDashboardRoute: AppDashboardRoute,
+  AppGrowthRoute: AppGrowthRoute,
+  AppInsightRoute: AppInsightRoute,
+  AppTransactionRoute: AppTransactionRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
