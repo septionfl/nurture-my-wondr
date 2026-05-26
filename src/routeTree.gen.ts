@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppTransactionRouteImport } from './routes/_app/transaction'
+import { Route as AppNudgesRouteImport } from './routes/_app/nudges'
 import { Route as AppInsightRouteImport } from './routes/_app/insight'
 import { Route as AppGrowthRouteImport } from './routes/_app/growth'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
+import { Route as AppInsightCategoryRouteImport } from './routes/_app/insight.$category'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -28,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppTransactionRoute = AppTransactionRouteImport.update({
   id: '/transaction',
   path: '/transaction',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNudgesRoute = AppNudgesRouteImport.update({
+  id: '/nudges',
+  path: '/nudges',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInsightRoute = AppInsightRouteImport.update({
@@ -45,20 +52,29 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppInsightCategoryRoute = AppInsightCategoryRouteImport.update({
+  id: '/$category',
+  path: '/$category',
+  getParentRoute: () => AppInsightRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AppDashboardRoute
   '/growth': typeof AppGrowthRoute
-  '/insight': typeof AppInsightRoute
+  '/insight': typeof AppInsightRouteWithChildren
+  '/nudges': typeof AppNudgesRoute
   '/transaction': typeof AppTransactionRoute
+  '/insight/$category': typeof AppInsightCategoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof AppDashboardRoute
   '/growth': typeof AppGrowthRoute
-  '/insight': typeof AppInsightRoute
+  '/insight': typeof AppInsightRouteWithChildren
+  '/nudges': typeof AppNudgesRoute
   '/transaction': typeof AppTransactionRoute
+  '/insight/$category': typeof AppInsightCategoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,14 +82,30 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/growth': typeof AppGrowthRoute
-  '/_app/insight': typeof AppInsightRoute
+  '/_app/insight': typeof AppInsightRouteWithChildren
+  '/_app/nudges': typeof AppNudgesRoute
   '/_app/transaction': typeof AppTransactionRoute
+  '/_app/insight/$category': typeof AppInsightCategoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/growth' | '/insight' | '/transaction'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/growth'
+    | '/insight'
+    | '/nudges'
+    | '/transaction'
+    | '/insight/$category'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/growth' | '/insight' | '/transaction'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/growth'
+    | '/insight'
+    | '/nudges'
+    | '/transaction'
+    | '/insight/$category'
   id:
     | '__root__'
     | '/'
@@ -81,7 +113,9 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/growth'
     | '/_app/insight'
+    | '/_app/nudges'
     | '/_app/transaction'
+    | '/_app/insight/$category'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -112,6 +146,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTransactionRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/nudges': {
+      id: '/_app/nudges'
+      path: '/nudges'
+      fullPath: '/nudges'
+      preLoaderRoute: typeof AppNudgesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/insight': {
       id: '/_app/insight'
       path: '/insight'
@@ -133,20 +174,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/insight/$category': {
+      id: '/_app/insight/$category'
+      path: '/$category'
+      fullPath: '/insight/$category'
+      preLoaderRoute: typeof AppInsightCategoryRouteImport
+      parentRoute: typeof AppInsightRoute
+    }
   }
 }
+
+interface AppInsightRouteChildren {
+  AppInsightCategoryRoute: typeof AppInsightCategoryRoute
+}
+
+const AppInsightRouteChildren: AppInsightRouteChildren = {
+  AppInsightCategoryRoute: AppInsightCategoryRoute,
+}
+
+const AppInsightRouteWithChildren = AppInsightRoute._addFileChildren(
+  AppInsightRouteChildren,
+)
 
 interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppGrowthRoute: typeof AppGrowthRoute
-  AppInsightRoute: typeof AppInsightRoute
+  AppInsightRoute: typeof AppInsightRouteWithChildren
+  AppNudgesRoute: typeof AppNudgesRoute
   AppTransactionRoute: typeof AppTransactionRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppGrowthRoute: AppGrowthRoute,
-  AppInsightRoute: AppInsightRoute,
+  AppInsightRoute: AppInsightRouteWithChildren,
+  AppNudgesRoute: AppNudgesRoute,
   AppTransactionRoute: AppTransactionRoute,
 }
 
@@ -159,13 +221,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
