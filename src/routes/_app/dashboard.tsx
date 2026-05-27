@@ -2,11 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Bell, ArrowUpRight, ArrowLeftRight, BarChart3, TrendingUp, Eye, EyeOff,
-  Sparkles, History, ChevronRight, User,
+  Sparkles, History, ChevronRight, User, QrCode, Send, Wallet, Plus, Zap,
 } from "lucide-react";
 import { useHabitStore, formatIDR, NudgeKey } from "@/stores/useHabitStore";
 import { NudgeIcon } from "@/components/NudgeIcon";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { WondrLogo } from "@/components/WondrLogo";
 import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/_app/dashboard")({
