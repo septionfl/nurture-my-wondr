@@ -79,9 +79,24 @@ function GrowthPage() {
                 <div className="flex items-center gap-3">
                   <NudgeIcon iconKey={g.iconKey} size="md" tone="accent" />
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-sm font-bold">{g.name}</span>
-                      {g.autoTransfer && (
+                      {g.locked && (
+                        <span className="text-[9px] font-black uppercase tracking-wider text-white px-1.5 py-0.5 rounded" style={{ background: "var(--wondr-black)" }}>
+                          Locked
+                        </span>
+                      )}
+                      {g.createdFrom === "payday" && (
+                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: "var(--wondr-teal)", color: "var(--wondr-black)" }}>
+                          Shield
+                        </span>
+                      )}
+                      {g.routedCategory && (
+                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: "var(--wondr-lime)", color: "var(--wondr-black)" }}>
+                          Routed · {g.routedCategory}
+                        </span>
+                      )}
+                      {g.autoTransfer && !g.locked && (
                         <span className="text-[9px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded">
                           Auto
                         </span>
