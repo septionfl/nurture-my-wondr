@@ -1,131 +1,113 @@
-## Ringkasan Perubahan
+## Konteks
 
-Refactor prototype WONDR "NURTURE the Habit" menjadi lebih profesional: tema terang (background putih), hapus mayoritas emoji, tambah detail insight, riwayat nudge, otomasi transfer ke Growth, dan jadikan semua elemen interaktif.
+Solusi Nurture di-reposisi: Growth bukan lagi "fitur baru" tetapi repositori pasif. Inovasi sepenuhnya berada di **Trigger & Reminder Mechanism** dengan **1-click frictionless action** dan persona-aware copy (Beni Gen-Z vs Wanda Working Mother). Empat fitur prototipe baru yang harus diutamakan:
 
----
-
-## 1. Perubahan Tema (Background Putih + Profesional)
-
-File: `src/styles.css`
-- Ganti `--background` ke putih (`oklch(0.99 0 0)`), `--foreground` ke deep navy (`#0A1A3A`).
-- `--card` jadi `oklch(0.985 0.005 250)` (off-white) dengan border halus `oklch(0.92 0.01 250)`.
-- `--primary` tetap Vibrant Orange untuk CTA, `--accent` tetap Bright Cyan tapi diturunkan saturasi sedikit agar enak di putih (`oklch(0.62 0.12 200)`).
-- Tambah `--surface-elevated`, `--shadow-soft`, `--shadow-elevated` untuk hierarki visual di tema terang.
-- Ganti `--gradient-navy` jadi `--gradient-surface` (white → very-light-gray).
-- Body background: putih solid. Hilangkan glow cyan yang berat; pakai shadow halus.
-
-File: `src/components/MobileShell.tsx`
-- Beri shell putih dengan shadow halus & border subtle agar tetap terasa "mobile frame" di canvas desktop.
+1. Payday Auto-Shield (full-screen takeover saat gaji masuk)
+2. Micro-Budgeting Nudge (kartu cyan di layar Transaksi Berhasil)
+3. Habit Tracker Carousel (di Beranda, tepat di bawah saldo)
+4. Goal Re-routing (auto-debit QRIS dari kantong goal, bukan saldo utama)
 
 ---
 
-## 2. Hilangkan Emoji untuk Visualisasi
+## 1. Store: persona, auto-goal creation, locked pockets
 
-Ganti emoji (🏝️ 🛟 🏃 ☕ ✈️ 📉 🍔 🌏 🎉) jadi ikon `lucide-react` berwarna brand:
-- Goal Bali → `Palmtree`, Dana Darurat → `ShieldCheck`, Marathon → `Activity`.
-- Nudge: salary→`Wallet`, bali→`Plane`, diaspora→`TrendingDown`, cafe→`Coffee`, food→`UtensilsCrossed`, wellness→`HeartPulse`, travel→`Globe2`.
-- Refactor `NUDGES` di `useHabitStore.ts`: ganti field `emoji: string` → `icon: LucideIcon` (atau key string yang di-map di komponen agar store tetap pure).
-- Komponen yang merender emoji (`SmartNudgeModal`, dashboard goal list, growth, insight) dipindahkan ke ikon bulat dengan tinted background (`bg-accent/10 text-accent`).
-- Emoji diperbolehkan tetap di Wondr Wrap (storytelling slide) — opsional, tipis.
+File: `src/stores/useHabitStore.ts`
 
----
+- Tambah `persona: 'beni' | 'wanda'` (default `'beni'`) + setter `setPersona`. Persona menentukan copy & default amount untuk Payday Shield.
+- Goal model: tambah `locked: boolean` (untuk goal hasil 1-click), `routedCategory?: string` (mis. `"Kafe"` → setiap QRIS kategori Kafe auto-debit dari kantong ini), `createdFrom?: 'payday' | 'micro' | 'manual'`.
+- `addTransaction(t)`: jika ada goal dengan `routedCategory === t.category` & `g.current >= |t.amount|`, dana ditarik dari goal (kurangi `g.current`, tidak kurangi `balance`); catat txn dengan `auto: true, goalId`. Jika dana goal tidak cukup → fallback ke saldo utama + tampilkan nudge "Top up Budget Kopi".
+- `createGoalFromTemplate({ source, name, target, current?, routedCategory?, iconKey })`: 1-click factory. Otomatis push goal baru + transaksi auto-transfer (jika `current > 0`).
+- `acceptPaydayShield(amount)`: pisahkan `amount` dari saldo → buat/append goal "Tagihan Rutin" (`createdFrom: 'payday'`, `locked: true`).
+- `acceptMicroBudget(category, amount)`: buat goal "Budget {Category}" dengan `routedCategory: category`, `current: amount` (dipindah dari saldo), `iconKey: 'coffee'/'utensils'`.
+- State baru: `paydayShieldShown: boolean` (one-shot per "bulan"); helper `triggerPaydayShield()` & `dismissPaydayShield()`.
+- Tipe `Txn` tambah field `auto?: boolean`, `goalId?: string` (sudah ada) — pastikan `category: "Pemasukan"` dengan amount > 3jt jadi trigger Payday.
 
-## 3. Tambah Detail Insight
+## 2. Komponen baru: PaydayShieldModal (Fitur 1)
 
-File: `src/routes/_app/insight.tsx` (revamp) + route baru `src/routes/_app/insight.$category.tsx` untuk detail per-kategori.
+File baru: `src/components/PaydayShieldModal.tsx`
 
-Tambahan di Insight utama:
-- **Spending Breakdown bulan ini**: Donut chart (Recharts) per kategori (Kafe, Makanan, Travel, Wellness, Transport, Belanja) — klik segment → buka detail kategori.
-- **Monthly Trend**: Line/Area chart 6 bulan terakhir pengeluaran vs pemasukan.
-- **Top Merchants**: list 5 merchant terbanyak (Janji Jiwa, GoFood, Grab, dll), klik → detail merchant (modal/sheet).
-- **Habit Score**: kartu skor 0-100 dengan progress ring + breakdown 3 metrik (Saving Rate, Budget Adherence, Goal Progress).
-- **Wondr Wrap carousel**: tetap, tapi pakai ikon & tipografi profesional.
+- Full-screen takeover (bukan bottom-sheet). Latar putih dengan blob orange/teal di sudut (konsisten brand wondr).
+- Ilustrasi: ikon `ShieldCheck` besar dalam lingkaran gradient orange→teal (bukan emoji), aksen Sparkles.
+- Konten:
+  - Eyebrow: "PAYDAY DETECTED" + tanggal.
+  - Headline (persona-aware):
+    - Beni: "Halo Beni, Gaji Rp 5.000.000 sudah masuk!"
+    - Wanda: "Bu Wanda, gaji bulanan sudah cair."
+  - Body persona-aware:
+    - Beni: "Pisahkan **Rp 2.000.000** sekarang ke kantong **Tagihan Rutin** biar nggak kepakai jajan."
+    - Wanda: "Bagi otomatis ke 3 pos: Belanja Dapur, Listrik & Air, Pendidikan Anak."
+  - Breakdown card: list pos + nominal (computed dari `transactions` historis rata-rata, untuk demo pakai konstanta).
+- Primary CTA orange: "Pisahkan Sekarang" → panggil `acceptPaydayShield()` → confetti/check animation → toast "Goal otomatis dibuat. Lihat di Beranda." dengan link ke `/`.
+- Secondary: "Nanti saja" → `dismissPaydayShield()`.
+- Auto-trigger: di `_app.tsx` (atau root dashboard) — `useEffect` cek balance increase signal; untuk demo: tombol "Demo: Gajian masuk" di dashboard sudah ada (`SCENARIOS salary`) — re-route untuk membuka modal ini alih-alih `SmartNudgeModal` ketika key `salary`.
 
-Halaman detail kategori (`/insight/:category`):
-- Header dengan ikon + total bulan ini + % vs bulan lalu.
-- Bar chart per minggu.
-- Daftar transaksi kategori tsb (clickable → modal detail txn).
-- CTA: "Buat budget kategori ini" → membuka Growth.
+Render di `src/routes/_app.tsx` bersama `SmartNudgeModal`.
 
----
+## 3. Micro-Budgeting Nudge Card (Fitur 2)
 
-## 4. Riwayat Nudge
+File: `src/routes/_app/transaction.tsx` (edit stage `success`)
 
-Store (`useHabitStore.ts`):
-- Tambah tipe `NudgeHistoryEntry { id, key, action: 'accepted'|'dismissed'|'shown', timestamp, amount? }`.
-- Tambah state `nudgeHistory: NudgeHistoryEntry[]`.
-- Push ke history pada `showNudge` (action: shown), `acceptNudge` (accepted), `dismissNudge` (dismissed).
+- Di bawah check hijau, tambah **interactive card** dengan accent Bright Cyan (`bg-[var(--wondr-teal)]/15`, border teal):
+  - Eyebrow: "SMART INSIGHT" + ikon Sparkles teal.
+  - Headline dinamis (mis. kafe ke-5):
+    - "Kamu sudah habis **Rp 400.000** di Kafe bulan ini."
+  - Body: "Kunci sisa budget jajanmu di kantong **Budget Kopi** biar nggak overbudget."
+  - CTA pill teal "Buat Limit Jajan" → `acceptMicroBudget('Kafe', 300_000)` → animate card jadi "Goal Budget Kopi aktif ✓ — QRIS kafe berikutnya otomatis dari kantong ini" dengan tombol "Lihat" → `/growth`.
+  - CTA secondary text "Lewati".
+- Logic trigger: hitung `transactions.filter(t => t.category === merchant.category).length` ≥ 5 (untuk demo, force-show pada skenario `cafe` & `food`).
+- Kartu ini menggantikan delay 900ms `showNudge` lama untuk skenario kafe/food. Bottom-sheet `SmartNudgeModal` lama tetap dipakai untuk skenario lain.
 
-Route baru: `src/routes/_app/nudges.tsx` ("Riwayat Nudge"):
-- List nudge yang pernah muncul: ikon, headline, waktu, badge status (Diterima/Dilewati/Dilihat), dan amount jika ada.
-- Filter chip: Semua / Diterima / Dilewati.
-- Klik item → re-open `SmartNudgeModal` untuk nudge tsb (re-trigger).
-- Statistik header: total nudge, acceptance rate, total dana yang dipindahkan via nudge.
+## 4. Habit Tracker Carousel (Fitur 3)
 
-Entry point:
-- Tile baru di Dashboard "Riwayat Nudge" + ikon `History` di header dashboard.
-- Tambahkan ke BottomNav? Tidak — tetap 4 slot (Home, Transaction, Insight, Growth). Akses via dashboard tile + ikon header.
+File: `src/routes/_app/dashboard.tsx`
 
----
+- Sisipkan **carousel** persis di bawah balance card (sebelum Quick Actions). Gunakan komponen `Carousel` (Embla) yang sudah ada di `src/components/ui/carousel.tsx`.
+- Slide per goal aktif:
+  - Slide "Tagihan Rutin" (warna aksen Bright Cyan `var(--wondr-teal)`): ikon `ShieldCheck`, nama, nominal terpisah, badge "Auto-shield aktif".
+  - Slide "Liburan Bali" (purple): ikon `Plane`, progress bar persen, micro-copy dinamis di atas judul: "80% to your Bali goal — save Rp 500K minggu ini?". CTA pill putih "Top up" → buka `GoalDetailSheet`.
+  - Slide "Budget Kopi" (orange muda) muncul jika sudah dibuat lewat Micro-Budget.
+  - Slide terakhir: "+ Buat goal baru" → buka `NewGoalModal` di Growth (pakai navigate + state).
+- Dots indicator di bawah carousel.
+- Hapus duplikasi: section "Saving Goals" lama digantikan oleh carousel ini (rapikan layout — tidak menampilkan goal dua kali).
 
-## 5. Otomasi Transfer ke Growth
+## 5. Goal Re-routing (Fitur 4)
 
-Konsep: setiap acceptNudge yang menghasilkan transfer (salary auto-save, bali top-up, cafe redirect, high_food top-up Tapenas) otomatis:
-- Mengurangi `balance`, menambah `current` di goal terkait (sudah ada untuk sebagian).
-- Mencatat transaksi keluar berlabel "Auto-transfer → [Goal]" di `transactions` (kategori: "Auto-Save") agar muncul di Insight.
-- Push entry ke `nudgeHistory` dengan amount.
-- Mapping nudge → goal: salary→emergency, bali_goal→bali, cafe_qris→bali, high_food→emergency, wellness→marathon.
-- Tampilkan toast/inline confirmation: "Rp X dipindahkan ke [Goal]. Lihat di Growth." dengan link clickable.
+- Sudah tercover oleh `addTransaction` logic di store (lihat #1). Implementasi visual:
+  - Di `transaction.tsx` stage `success`: jika txn baru ter-route ke goal, kartu micro-budget berubah jadi konfirmasi: "Dana **Rp 38.000** diambil dari kantong **Budget Kopi**. Sisa kantong: **Rp 262.000**." (bukan dari saldo utama).
+  - Di balance card dashboard: tambah micro-indicator "Saldo bebas" vs total termasuk goal locked (opsional, kalau ringkas: tampilkan tooltip `Sparkles` "Rp X terkunci di goal").
 
-Di Growth:
-- Tampilkan badge "Auto" pada goal yang menerima transfer otomatis minggu ini.
-- Section "Aktivitas Auto-Transfer" — list 5 transfer otomatis terakhir, clickable → detail.
-- Toggle per-goal: "Aktifkan auto-transfer dari nudge" (state lokal di store).
+## 6. Persona Switcher (demo prop)
 
----
+- Di dashboard, samping eyebrow "Selamat pagi", tambah toggle kecil 2-pill: `Beni` / `Wanda`. State dari `useHabitStore.persona`.
+- Switch mengganti nama sapaan, copy Payday Shield, dan template default goal Payday (Beni: 1 pos tagihan; Wanda: 3 pos rumah tangga).
 
-## 6. Semua Clickable
+## 7. Copywriting (final, dipakai di kode)
 
-Audit & tambahkan handler:
-- **Dashboard**: header user (→ profile sheet stub), bell (→ notifications sheet), balance card (→ statement modal), each transaction row (→ txn detail modal), each goal row (→ growth detail), "Demo skenario" chips (sudah).
-- **Transaction**: semua ActionTile (Transfer, Bill Pay, Pulsa) buka coming-soon sheet, riwayat (jika ada) clickable.
-- **Insight**: setiap chart segment, wrap card, merchant row, category, score breakdown — semua membuka detail/modal.
-- **Growth**: setiap goal card (→ goal detail sheet dengan kontribusi history, edit target, top-up manual), multicurrency wallet (→ detail wallet), recurring item (→ edit sheet).
-- **BottomNav**: tetap.
-- **SmartNudgeModal**: kedua CTA + backdrop tap untuk dismiss + tombol close.
-- Tambah komponen `Sheet` dari shadcn untuk detail sheets yang ringan.
+- Payday Beni primary CTA: **"Pisahkan Sekarang"**, headline "Halo Beni, gaji Rp 5.000.000 sudah masuk!", body "Pisahkan Rp 2.000.000 sekarang ke kantong **Tagihan Rutin** biar nggak terpakai buat jajan."
+- Payday Wanda: "Bu Wanda, gaji bulanan cair. Bagi ke 3 pos rumah tangga sekarang?" CTA "Bagi Otomatis".
+- Micro-Budget Kafe: "Kamu habis Rp 400.000 di Kafe bulan ini. Kunci sisa budget jajanmu di **Budget Kopi**?" CTA "Buat Limit Jajan".
+- Habit Carousel nudge text: "80% to your Bali goal — save Rp 500K this week?".
+- Goal re-route success toast: "Bayar dari kantong **Budget Kopi**. Sisa kantong Rp 262.000."
 
----
+## 8. File touch list
 
-## File yang Disentuh
-
-Buat:
-- `src/routes/_app/nudges.tsx`
-- `src/routes/_app/insight.$category.tsx`
-- `src/components/NudgeHistoryItem.tsx`
-- `src/components/GoalDetailSheet.tsx`
-- `src/components/TransactionDetailSheet.tsx`
-- `src/components/CategoryIcon.tsx` (mapping kategori → ikon + warna)
-- `src/components/NudgeIcon.tsx`
+Create:
+- `src/components/PaydayShieldModal.tsx`
+- `src/components/MicroBudgetCard.tsx` (dipakai oleh transaction success)
+- `src/components/HabitCarousel.tsx`
+- `src/components/PersonaToggle.tsx`
 
 Edit:
-- `src/styles.css` (tema putih)
-- `src/components/MobileShell.tsx` (frame profesional)
-- `src/components/SmartNudgeModal.tsx` (ikon, bukan emoji; styling terang)
-- `src/components/BottomNav.tsx` (warna terang)
-- `src/stores/useHabitStore.ts` (nudge history, auto-transfer mapping, kategori transaksi)
-- `src/routes/_app.tsx` (tidak ada perubahan besar)
-- `src/routes/_app/dashboard.tsx` (tile riwayat nudge, hapus emoji, clickable rows)
-- `src/routes/_app/transaction.tsx` (clickable tiles, tema)
-- `src/routes/_app/insight.tsx` (revamp lengkap)
-- `src/routes/_app/growth.tsx` (auto-transfer section, goal detail, hapus emoji)
-- `src/routes/index.tsx` (login screen ke tema terang)
+- `src/stores/useHabitStore.ts` (persona, goal locking, re-routing, template factories, payday state)
+- `src/routes/_app.tsx` (mount `PaydayShieldModal`)
+- `src/routes/_app/dashboard.tsx` (carousel, persona toggle, hapus duplikasi goal list, ubah skenario `salary` → trigger Payday Shield bukan SmartNudgeModal)
+- `src/routes/_app/transaction.tsx` (success state pakai `MicroBudgetCard`, tampilkan re-route confirmation)
+- `src/routes/_app/growth.tsx` (badge "Auto-shield" / "Routed" + label "Locked pocket")
 
----
+## Catatan teknis (untuk reviewer)
 
-## Catatan Teknis
-
-- Tambah dependency: tidak ada baru (recharts, framer-motion, lucide-react sudah ada). Pakai `Sheet` dari shadcn `src/components/ui/sheet.tsx` (sudah tersedia).
-- Semua data tetap mock di Zustand store.
-- Bilingual ID (default), CTA tetap ID.
-- Aksesibilitas: tombol pakai elemen `<button>`, link pakai `<Link>` TanStack, fokus ring dari token `--ring`.
+- Tidak ada dependency baru. Embla carousel & framer-motion sudah ada.
+- Semua state tetap mock di Zustand; tidak ada perubahan backend.
+- Modal fullscreen Payday harus override z-index di atas BottomNav (`z-[60]`).
+- Re-routing dilakukan di reducer-level → testable tanpa UI.
+- A11y: tombol pakai `<button>`, focus ring dari token `--ring`.
