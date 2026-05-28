@@ -16,7 +16,62 @@ export type NudgeIconKey =
   | "coffee"
   | "utensils"
   | "heart-pulse"
-  | "globe";
+  | "globe"
+  | "shield"
+  | "palm"
+  | "activity";
+
+export type Persona = "beni" | "wanda";
+
+export interface PersonaProfile {
+  id: Persona;
+  name: string;
+  greeting: string;
+  salary: number;
+  shieldAmount: number;
+  shieldGoalName: string;
+  shieldHeadline: string;
+  shieldBody: string;
+  shieldCta: string;
+  shieldBreakdown: { label: string; amount: number }[];
+}
+
+export const PERSONAS: Record<Persona, PersonaProfile> = {
+  beni: {
+    id: "beni",
+    name: "Beni",
+    greeting: "Hi, Beni",
+    salary: 5_000_000,
+    shieldAmount: 2_000_000,
+    shieldGoalName: "Tagihan Rutin",
+    shieldHeadline: "Halo Beni, gaji Rp 5.000.000 sudah masuk!",
+    shieldBody:
+      "Pisahkan Rp 2.000.000 sekarang ke kantong Tagihan Rutin biar nggak terpakai buat jajan.",
+    shieldCta: "Pisahkan Sekarang",
+    shieldBreakdown: [
+      { label: "Kos & Listrik", amount: 1_400_000 },
+      { label: "Kuota & Langganan", amount: 350_000 },
+      { label: "Transport Bulanan", amount: 250_000 },
+    ],
+  },
+  wanda: {
+    id: "wanda",
+    name: "Bu Wanda",
+    greeting: "Hi, Bu Wanda",
+    salary: 12_500_000,
+    shieldAmount: 7_500_000,
+    shieldGoalName: "Pos Rumah Tangga",
+    shieldHeadline: "Bu Wanda, gaji bulanan sudah cair.",
+    shieldBody:
+      "Bagi otomatis ke 3 pos rumah tangga sekarang biar budget keluarga tetap aman.",
+    shieldCta: "Bagi Otomatis",
+    shieldBreakdown: [
+      { label: "Belanja Dapur", amount: 3_500_000 },
+      { label: "Listrik & Air", amount: 1_500_000 },
+      { label: "Pendidikan Anak", amount: 2_500_000 },
+    ],
+  },
+};
 
 export interface NudgeContent {
   key: NudgeKey;
@@ -34,11 +89,9 @@ export const NUDGES: Record<NudgeKey, NudgeContent> = {
     key: "salary",
     iconKey: "wallet",
     headline: "Gajian masuk!",
-    body: "Kami deteksi pemasukan Rp 12.500.000. Aktifkan Auto-Save 20% agar dana darurat tumbuh konsisten.",
-    primaryCta: "Auto-save Rp 2.500.000",
+    body: "Aktifkan Payday Auto-Shield agar dana rutin terpisah otomatis.",
+    primaryCta: "Aktifkan Shield",
     secondaryCta: "Nanti saja",
-    amount: 2_500_000,
-    goalId: "emergency",
   },
   bali_goal: {
     key: "bali_goal",
@@ -101,10 +154,14 @@ export const NUDGES: Record<NudgeKey, NudgeContent> = {
 export interface Goal {
   id: string;
   name: string;
-  iconKey: string; // mapped via NudgeIcon/Goal icon helper
+  iconKey: NudgeIconKey | string;
   target: number;
   current: number;
   autoTransfer: boolean;
+  locked?: boolean;
+  routedCategory?: string;
+  createdFrom?: "payday" | "micro" | "manual";
+  accent?: string; // CSS color var for carousel
 }
 
 export interface Txn {
@@ -115,6 +172,7 @@ export interface Txn {
   time: string;
   auto?: boolean;
   goalId?: string;
+  routed?: boolean; // paid from a goal pocket
 }
 
 export interface NudgeHistoryEntry {
@@ -126,7 +184,17 @@ export interface NudgeHistoryEntry {
   goalId?: string;
 }
 
+export interface RoutedResult {
+  routed: boolean;
+  goalId?: string;
+  goalName?: string;
+  remaining?: number;
+}
+
 interface HabitState {
+  persona: Persona;
+  setPersona: (p: Persona) => void;
+
   balance: number;
   goals: Goal[];
   transactions: Txn[];
@@ -134,23 +202,34 @@ interface HabitState {
   nudgeHistory: NudgeHistoryEntry[];
   dashboardNudge: NudgeKey | null;
   pendingNudge: NudgeContent | null;
+
+  paydayShieldOpen: boolean;
+  triggerPaydayShield: () => void;
+  dismissPaydayShield: () => void;
+  acceptPaydayShield: () => { goalId: string; amount: number };
+
   setDashboardNudge: (k: NudgeKey | null) => void;
   showNudge: (k: NudgeKey) => void;
   dismissNudge: () => void;
   acceptNudge: () => void;
-  addTransaction: (t: Txn) => void;
+  addTransaction: (t: Omit<Txn, "routed">) => RoutedResult;
   topUpGoal: (goalId: string, amount: number) => void;
   toggleAutoTransfer: (goalId: string) => void;
+  acceptMicroBudget: (category: string, amount: number, name: string, iconKey: NudgeIconKey) => string;
+  getGoalForCategory: (category: string) => Goal | undefined;
 }
 
 const now = () => Date.now();
 
 export const useHabitStore = create<HabitState>((set, get) => ({
+  persona: "beni",
+  setPersona: (p) => set({ persona: p }),
+
   balance: 18_420_000,
   goals: [
-    { id: "bali", name: "Liburan Bali", iconKey: "palm", target: 8_000_000, current: 6_400_000, autoTransfer: true },
-    { id: "emergency", name: "Dana Darurat", iconKey: "shield", target: 30_000_000, current: 13_500_000, autoTransfer: true },
-    { id: "marathon", name: "Marathon Jakarta", iconKey: "activity", target: 3_000_000, current: 0, autoTransfer: false },
+    { id: "bali", name: "Liburan Bali", iconKey: "plane", target: 8_000_000, current: 6_400_000, autoTransfer: true, accent: "var(--wondr-purple)" },
+    { id: "emergency", name: "Dana Darurat", iconKey: "shield", target: 30_000_000, current: 13_500_000, autoTransfer: true, accent: "var(--wondr-teal)" },
+    { id: "marathon", name: "Marathon Jakarta", iconKey: "activity", target: 3_000_000, current: 0, autoTransfer: false, accent: "var(--wondr-pink)" },
   ],
   transactions: [
     { id: "t1", label: "Kopi Janji Jiwa", category: "Kafe", amount: -38_000, time: "Hari ini, 09:14" },
@@ -161,8 +240,63 @@ export const useHabitStore = create<HabitState>((set, get) => ({
   ],
   triggeredNudges: [],
   nudgeHistory: [],
-  dashboardNudge: "salary",
+  dashboardNudge: null,
   pendingNudge: null,
+
+  paydayShieldOpen: false,
+  triggerPaydayShield: () => set({ paydayShieldOpen: true }),
+  dismissPaydayShield: () => set({ paydayShieldOpen: false }),
+  acceptPaydayShield: () => {
+    const profile = PERSONAS[get().persona];
+    const existing = get().goals.find((g) => g.name === profile.shieldGoalName);
+    let goalId: string;
+    if (existing) {
+      goalId = existing.id;
+      set({
+        goals: get().goals.map((g) =>
+          g.id === existing.id
+            ? { ...g, current: g.current + profile.shieldAmount, target: Math.max(g.target, g.current + profile.shieldAmount) }
+            : g,
+        ),
+      });
+    } else {
+      goalId = `g_pay_${now()}`;
+      set({
+        goals: [
+          ...get().goals,
+          {
+            id: goalId,
+            name: profile.shieldGoalName,
+            iconKey: "shield",
+            target: profile.shieldAmount,
+            current: profile.shieldAmount,
+            autoTransfer: true,
+            locked: true,
+            createdFrom: "payday",
+            accent: "var(--wondr-teal)",
+          },
+        ],
+      });
+    }
+    set({
+      balance: get().balance - profile.shieldAmount,
+      paydayShieldOpen: false,
+      transactions: [
+        {
+          id: `auto${now()}`,
+          label: `Payday Shield → ${profile.shieldGoalName}`,
+          category: "Auto-Save",
+          amount: -profile.shieldAmount,
+          time: "Baru saja",
+          auto: true,
+          goalId,
+        },
+        ...get().transactions,
+      ],
+    });
+    return { goalId, amount: profile.shieldAmount };
+  },
+
   setDashboardNudge: (k) => set({ dashboardNudge: k }),
   showNudge: (k) => {
     set({
@@ -202,7 +336,6 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       const goal = get().goals.find((g) => g.id === n.goalId);
       if (goal) {
         get().topUpGoal(n.goalId, n.amount);
-        // log auto-transfer transaction
         set({
           transactions: [
             {
@@ -220,11 +353,30 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       }
     }
   },
-  addTransaction: (t) =>
+  addTransaction: (t) => {
+    const abs = Math.abs(t.amount);
+    // Try route through a budget pocket (only for expenses)
+    if (t.amount < 0) {
+      const pocket = get().goals.find((g) => g.routedCategory === t.category);
+      if (pocket && pocket.current >= abs) {
+        set({
+          goals: get().goals.map((g) =>
+            g.id === pocket.id ? { ...g, current: g.current - abs } : g,
+          ),
+          transactions: [
+            { ...t, routed: true, goalId: pocket.id },
+            ...get().transactions,
+          ],
+        });
+        return { routed: true, goalId: pocket.id, goalName: pocket.name, remaining: pocket.current - abs };
+      }
+    }
     set({
       transactions: [t, ...get().transactions],
       balance: get().balance + t.amount,
-    }),
+    });
+    return { routed: false };
+  },
   topUpGoal: (goalId, amount) =>
     set({
       balance: get().balance - amount,
@@ -238,6 +390,65 @@ export const useHabitStore = create<HabitState>((set, get) => ({
         g.id === goalId ? { ...g, autoTransfer: !g.autoTransfer } : g
       ),
     }),
+  acceptMicroBudget: (category, amount, name, iconKey) => {
+    const existing = get().goals.find((g) => g.routedCategory === category);
+    if (existing) {
+      set({
+        balance: get().balance - amount,
+        goals: get().goals.map((g) =>
+          g.id === existing.id
+            ? { ...g, current: g.current + amount, target: Math.max(g.target, g.current + amount) }
+            : g,
+        ),
+        transactions: [
+          {
+            id: `auto${now()}`,
+            label: `Top up → ${existing.name}`,
+            category: "Auto-Save",
+            amount: -amount,
+            time: "Baru saja",
+            auto: true,
+            goalId: existing.id,
+          },
+          ...get().transactions,
+        ],
+      });
+      return existing.id;
+    }
+    const id = `g_mb_${now()}`;
+    set({
+      balance: get().balance - amount,
+      goals: [
+        ...get().goals,
+        {
+          id,
+          name,
+          iconKey,
+          target: amount,
+          current: amount,
+          autoTransfer: true,
+          routedCategory: category,
+          createdFrom: "micro",
+          locked: true,
+          accent: "var(--wondr-orange)",
+        },
+      ],
+      transactions: [
+        {
+          id: `auto${now()}`,
+          label: `Buat kantong ${name}`,
+          category: "Auto-Save",
+          amount: -amount,
+          time: "Baru saja",
+          auto: true,
+          goalId: id,
+        },
+        ...get().transactions,
+      ],
+    });
+    return id;
+  },
+  getGoalForCategory: (category) => get().goals.find((g) => g.routedCategory === category),
 }));
 
 export const formatIDR = (n: number) =>
