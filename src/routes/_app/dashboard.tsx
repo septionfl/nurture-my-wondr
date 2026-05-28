@@ -1,22 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Bell, ArrowUpRight, ArrowLeftRight, BarChart3, TrendingUp, Eye, EyeOff,
-  Sparkles, History, ChevronRight, User, QrCode, Send, Wallet, Plus, Zap,
+  Sparkles, History, User, QrCode, Send, Wallet, Plus, Zap, Lock,
 } from "lucide-react";
-import { useHabitStore, formatIDR, NudgeKey } from "@/stores/useHabitStore";
-import { NudgeIcon } from "@/components/NudgeIcon";
+import { useHabitStore, formatIDR, NudgeKey, PERSONAS } from "@/stores/useHabitStore";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { WondrLogo } from "@/components/WondrLogo";
-import { motion } from "framer-motion";
+import { HabitCarousel } from "@/components/HabitCarousel";
+import { PersonaToggle } from "@/components/PersonaToggle";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Beranda — wondr" }] }),
   component: Dashboard,
 });
 
-const SCENARIOS: { key: NudgeKey; label: string }[] = [
-  { key: "salary", label: "Gajian" },
+const SCENARIOS: { key: NudgeKey | "payday"; label: string }[] = [
+  { key: "payday", label: "Gajian (Payday Shield)" },
   { key: "bali_goal", label: "Goal Bali" },
   { key: "diaspora_rate", label: "Diaspora" },
   { key: "wellness", label: "Wellness" },
@@ -29,20 +29,17 @@ function Dashboard() {
   const goals = useHabitStore((s) => s.goals);
   const transactions = useHabitStore((s) => s.transactions);
   const triggered = useHabitStore((s) => s.triggeredNudges);
-  const dashboardNudge = useHabitStore((s) => s.dashboardNudge);
   const showNudge = useHabitStore((s) => s.showNudge);
+  const triggerPayday = useHabitStore((s) => s.triggerPaydayShield);
+  const persona = useHabitStore((s) => s.persona);
+  const profile = PERSONAS[persona];
   const [hide, setHide] = useState(false);
 
-  useEffect(() => {
-    if (dashboardNudge) {
-      const t = setTimeout(() => showNudge(dashboardNudge), 600);
-      return () => clearTimeout(t);
-    }
-  }, [dashboardNudge, showNudge]);
+  const lockedTotal = goals.filter((g) => g.locked).reduce((s, g) => s + g.current, 0);
 
   return (
     <div className="pb-4">
-      {/* Top app bar — wondr existing chrome */}
+      {/* Top app bar */}
       <div className="px-5 pt-10 pb-3 flex items-center justify-between bg-white sticky top-0 z-20">
         <WondrLogo size={22} />
         <div className="flex items-center gap-1">
@@ -60,12 +57,15 @@ function Dashboard() {
       </div>
 
       <div className="px-5">
-        <div className="mb-4">
-          <div className="text-[11px] text-muted-foreground">Selamat pagi,</div>
-          <div className="text-xl font-black tracking-tight">Hi, Naufal Rizky</div>
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <div className="text-[11px] text-muted-foreground">Selamat pagi,</div>
+            <div className="text-xl font-black tracking-tight">{profile.greeting}</div>
+          </div>
+          <PersonaToggle />
         </div>
 
-        {/* Balance card — wondr orange */}
+        {/* Balance card */}
         <button
           onClick={() => alert("Detail rekening wondr")}
           className="w-full text-left rounded-3xl p-5 text-white shadow-[var(--shadow-card)] mb-4 active:scale-[0.99] transition relative overflow-hidden"
@@ -83,12 +83,22 @@ function Dashboard() {
             <div className="text-3xl font-black tracking-tight mb-3">
               {hide ? "Rp •••••••" : formatIDR(balance)}
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-white font-bold">
-              <Sparkles className="w-3 h-3" />
-              {triggered.length} habit baru ter-track minggu ini
+            <div className="flex items-center justify-between text-[11px] font-bold">
+              <div className="flex items-center gap-1.5 text-white">
+                <Sparkles className="w-3 h-3" />
+                {triggered.length} habit ter-track minggu ini
+              </div>
+              {lockedTotal > 0 && (
+                <div className="flex items-center gap-1 text-white/90">
+                  <Lock className="w-3 h-3" /> {formatIDR(lockedTotal)} terkunci
+                </div>
+              )}
             </div>
           </div>
         </button>
+
+        {/* Habit Tracker Carousel — directly under balance */}
+        <HabitCarousel />
 
         {/* Quick actions */}
         <div className="grid grid-cols-4 gap-2 mb-5">
@@ -98,7 +108,7 @@ function Dashboard() {
           <QuickAction icon={Plus} label="Lainnya" bg="var(--wondr-pink)" fg="var(--wondr-black)" onClick={() => alert("Menu lainnya")} />
         </div>
 
-        {/* NEW FEATURE BANNER — Nurture */}
+        {/* Nurture banner */}
         <div className="rounded-3xl p-5 mb-5 relative overflow-hidden" style={{ background: "var(--wondr-lime)" }}>
           <div className="absolute right-3 top-3 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider" style={{ background: "var(--wondr-black)", color: "var(--wondr-lime)" }}>
             Baru
@@ -110,15 +120,15 @@ function Dashboard() {
             Nurture the Habit
           </h3>
           <p className="text-xs font-medium mb-3" style={{ color: "var(--wondr-black)", opacity: 0.75 }}>
-            Engine nudge yang ubah transaksimu jadi rutinitas finansial sehat.
+            Engine 1-click yang ubah trigger transaksi jadi kantong otomatis.
           </p>
           <div className="flex gap-2">
             <button
-              onClick={() => navigate({ to: "/insight" })}
+              onClick={triggerPayday}
               className="px-3.5 py-2 rounded-full text-xs font-black text-white"
               style={{ background: "var(--wondr-black)" }}
             >
-              Mulai eksplor →
+              Demo Payday Shield →
             </button>
             <Link to="/nudges" className="px-3.5 py-2 rounded-full text-xs font-black border-2" style={{ borderColor: "var(--wondr-black)", color: "var(--wondr-black)" }}>
               Riwayat
@@ -129,13 +139,13 @@ function Dashboard() {
         {/* Scenario switcher */}
         <div className="mb-5">
           <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-2 font-black">
-            Demo Skenario Nudge
+            Demo Trigger Engine
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {SCENARIOS.map((s) => (
               <button
                 key={s.key}
-                onClick={() => showNudge(s.key)}
+                onClick={() => s.key === "payday" ? triggerPayday() : showNudge(s.key as NudgeKey)}
                 className="px-3 py-1.5 rounded-full bg-white border-2 border-border text-xs font-bold whitespace-nowrap transition"
               >
                 {s.label}
@@ -144,7 +154,7 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* 3 Dimensi — brand color blocks */}
+        {/* 3 Dimensi */}
         <div className="mb-6">
           <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-2 font-black">
             3 Dimensi Nurture
@@ -153,50 +163,6 @@ function Dashboard() {
             <DimensionTile to="/transaction" icon={ArrowLeftRight} label="Transaction" sub="Present" bg="var(--wondr-orange)" fg="#fff" />
             <DimensionTile to="/insight" icon={BarChart3} label="Insight" sub="Past" bg="var(--wondr-teal)" fg="var(--wondr-black)" />
             <DimensionTile to="/growth" icon={TrendingUp} label="Growth" sub="Future" bg="var(--wondr-purple)" fg="#fff" />
-          </div>
-        </div>
-
-        {/* Goal progress */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-black">Saving Goals</h3>
-            <Link to="/growth" className="text-xs font-bold flex items-center gap-1" style={{ color: "var(--wondr-orange)" }}>
-              Lihat semua <ArrowUpRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {goals.slice(0, 2).map((g) => {
-              const pct = Math.round((g.current / g.target) * 100);
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => navigate({ to: "/growth" })}
-                  className="w-full text-left rounded-2xl bg-card border-2 border-border p-4 hover:border-[color:var(--wondr-orange)] transition"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-3">
-                      <NudgeIcon iconKey={g.iconKey} size="md" tone="accent" />
-                      <div>
-                        <div className="text-sm font-black">{g.name}</div>
-                        <div className="text-[11px] text-muted-foreground font-semibold">
-                          {formatIDR(g.current)} / {formatIDR(g.target)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-base font-black" style={{ color: "var(--wondr-orange)" }}>{pct}%</div>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ background: "var(--wondr-orange)" }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.8 }}
-                    />
-                  </div>
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -212,12 +178,15 @@ function Dashboard() {
             {transactions.slice(0, 5).map((t) => (
               <button
                 key={t.id}
-                onClick={() => alert(`${t.label}\n${t.category}\n${formatIDR(t.amount)}\n${t.time}`)}
+                onClick={() => alert(`${t.label}\n${t.category}\n${formatIDR(t.amount)}\n${t.time}${t.routed ? "\n\n(Dibayar dari kantong goal)" : ""}`)}
                 className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition"
               >
                 <CategoryIcon category={t.category} size={40} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold truncate">{t.label}</div>
+                  <div className="text-sm font-bold truncate flex items-center gap-1.5">
+                    {t.label}
+                    {t.routed && <Lock className="w-3 h-3" style={{ color: "var(--wondr-teal-deep)" }} />}
+                  </div>
                   <div className="text-[11px] text-muted-foreground font-semibold">{t.category} · {t.time}</div>
                 </div>
                 <div className={`text-sm font-black ${t.amount > 0 ? "text-emerald-600" : "text-foreground"}`}>
