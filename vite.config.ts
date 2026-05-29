@@ -2,16 +2,14 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { nitro } from "nitro/vite";
+// 1. Tambahkan impor Tailwind ini
+import tailwindcss from "@tailwindcss/vite"; 
 
 export default defineConfig({
   plugins: [
+    tailwindcss(), 
     tsconfigPaths(),
     tanstackStart(),
-    // Masukkan Nitro dan paksa menjadi format Vercel
-    nitro({
-      preset: "vercel"
-    }),
     react(),
   ],
 });
