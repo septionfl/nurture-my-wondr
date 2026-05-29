@@ -2,14 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-// 1. Tambahkan impor Tailwind ini
-import tailwindcss from "@tailwindcss/vite"; 
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [
-    tailwindcss(), 
+    tailwindcss(), // Pastikan posisi Tailwind tetap di atas sini
     tsconfigPaths(),
-    tanstackStart(),
+    tanstackStart(), // Tanpa tambahan preset manual, biarkan sistem yang mendeteksi Vercel
     react(),
   ],
 });
