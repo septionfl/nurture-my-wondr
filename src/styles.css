@@ -100,7 +100,7 @@
 @layer base {
   * { border-color: var(--color-border); }
   html, body {
-    background: var(--color-background);
+    background: var(--secondary);
     color: var(--color-foreground);
     min-height: 100vh;
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;

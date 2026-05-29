@@ -10,7 +10,8 @@ const tabs = [
 
 export function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 px-3 pb-3 pointer-events-none">
+    /* TAMBAHKAN md:bottom-4 DI SINI */
+    <nav className="fixed bottom-0 md:bottom-4 left-1/2 -translate-x-1/2 w-full max-w-md z-40 px-3 pb-3 pointer-events-none">
       <div className="rounded-3xl bg-white border border-border shadow-[var(--shadow-elevated)] pointer-events-auto">
         <div className="grid grid-cols-4">
           {tabs.map(({ to, label, icon: Icon }) => (

@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-
+import { MobileShell } from "../components/MobileShell";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -101,7 +101,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <MobileShell>
+          {children}
+        </MobileShell>
+        
         <Scripts />
       </body>
     </html>
