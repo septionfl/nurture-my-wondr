@@ -99,6 +99,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        {/* Baris di bawah ini akan memaksa browser & Vercel untuk selalu memuat CSS */}
+        <link rel="stylesheet" href={appCss} />
       </head>
       <body>
         <MobileShell>
