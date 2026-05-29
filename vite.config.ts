@@ -1,9 +1,16 @@
-process.env.NITRO_PRESET = "vercel";
-
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
+import { TanStackStartVite } from "@tanstack/start/plugin";
 
 export default defineConfig({
-  tanstackStart: {
-    server: { entry: "server" },
-  },
+  plugins: [
+    tsconfigPaths(),
+    TanStackStartVite({
+      server: {
+        preset: "vercel", // Sekarang perintah ini tidak akan diblokir lagi
+      },
+    }),
+    react(),
+  ],
 });
