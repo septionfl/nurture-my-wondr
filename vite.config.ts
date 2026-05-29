@@ -1,14 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { TanStackStartVite } from "@tanstack/start/plugin";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 
 export default defineConfig({
   plugins: [
     tsconfigPaths(),
-    TanStackStartVite({
+    tanstackStart({
       server: {
-        preset: "vercel", // Sekarang perintah ini tidak akan diblokir lagi
+        preset: "vercel", 
       },
     }),
     react(),
